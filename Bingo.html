@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dynamic Bingo Game</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            background-color: #f0f2f5;
+            margin: 0;
+            padding: 20px;
+        }
+
+        h1 {
+            color: #333;
+            margin-bottom: 10px;
+        }
+
+        .controls {
+            margin-bottom: 20px;
+        }
+
+        button {
+            padding: 10px 20px;
+            font-size: 16px;
+            cursor: pointer;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            margin: 0 5px;
+            transition: background-color 0.2s;
+        }
+
+        button:hover {
+            background-color: #0056b3;
+        }
+
+        /* Bingo Progress Tracker Display */
+        .bingo-tracker {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 20px;
+            font-size: 32px;
+            font-weight: bold;
+            letter-spacing: 5px;
+        }
+
+        .letter {
+            color: #ccc;
+            transition: color 0.3s ease, transform 0.3s ease;
+        }
+
+        .letter.active {
+            color: #dc3545;
+            transform: scale(1.2);
+        }
+
+        /* Bingo Board Styling */
+        .bingo-board {
+            display: grid;
+            gap: 8px;
+            background-color: #fff;
+            padding: 15px;
+            border-radius: 10px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        .cell {
+            background-color: #e9ecef;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            cursor: pointer;
+            user-select: none;
+            position: relative;
+            border-radius: 5px;
+            transition: background-color 0.2s;
+        }
+
+        /* Responsive sizing based on grid type */
+        .board-5x5 .cell {
+            width: 60px;
+            height: 60px;
+            font-size: 18px;
+        }
+
+        .board-10x10 .cell {
+            width: 45px;
+            height: 45px;
+            font-size: 14px;
+        }
+
+        .cell:hover {
+            background-color: #dee2e6;
+        }
+
+        /* Circle effect when clicked */
+        .board-5x5 .cell.marked::after {
+            content: '';
+            position: absolute;
+            width: 44px;
+            height: 44px;
+            border: 4px solid #dc3545;
+            border-radius: 50%;
+            pointer-events: none;
+        }
+
+        .board-10x10 .cell.marked::after {
+            content: '';
+            position: absolute;
+            width: 32px;
+            height: 32px;
+            border: 3px solid #dc3545;
+            border-radius: 50%;
+            pointer-events: none;
+        }
+
+        .message {
+            margin-top: 20px;
+            font-size: 24px;
+            font-weight: bold;
+            color: #28a745;
+            height: 30px;
+        }
+    </style>
+</head>
+<body>
+
+    <h1>Bingo Game</h1>
+    
+    <div class="controls">
+        <button onclick="initGame(5)">New 5x5 Game (1-25)</button>
+        <button onclick="initGame(10)">New 10x10 Game (1-100)</button>
+    </div>
+
+    <div class="bingo-tracker" id="tracker">
+        <span class="letter">B</span>
+        <span class="letter">I</span>
+        <span class="letter">N</span>
+        <span class="letter">G</span>
+        <span class="letter">O</span>
+    </div>
+
+    <div id="board" class="bingo-board"></div>
+    <div id="message" class="message"></div>
+
+    <script>
+        let gridSize = 5;
+        let boardState = [];
+        let gameOver = false;
+        const bingoLetters = ['B', 'I', 'N', 'G', 'O'];
+
+        function initGame(size) {
+            gridSize = size;
+            gameOver = false;
+            document.getElementById('message').textContent = '';
+            
+            // Reset the visual B-I-N-G-O tracker
+            const letters = document.querySelectorAll('.letter');
+            letters.forEach(l => l.classList.remove('active'));
+
+            const board = document.getElementById('board');
+            board.innerHTML = '';
+            
+            board.className = 'bingo-board ' + (gridSize === 5 ? 'board-5x5' : 'board-10x10');
+            board.style.gridTemplateColumns = `repeat(${gridSize}, 1fr)`;
+
+            const totalNumbers = gridSize * gridSize;
+            const numbers = [];
+            for (let i = 1; i <= totalNumbers; i++) {
+                numbers.push(i);
+            }
+            
+            const shuffled = numbers.sort(() => 0.5 - Math.random());
+            boardState = Array(gridSize).fill(null).map(() => Array(gridSize).fill(false));
+
+            for (let i = 0; i < totalNumbers; i++) {
+                const row = Math.floor(i / gridSize);
+                const col = i % gridSize;
+
+                const cell = document.createElement('div');
+                cell.classList.add('cell');
+                cell.textContent = shuffled[i];
+                cell.dataset.row = row;
+                cell.dataset.col = col;
+
+                cell.addEventListener('click', () => handleCellClick(cell, row, col));
+                board.appendChild(cell);
+            }
+        }
+
+        function handleCellClick(cell, row, col) {
+            if (gameOver || boardState[row][col]) return;
+
+            cell.classList.add('marked');
+            boardState[row][col] = true;
+
+            // Check how many lines are completed across the board
+            const completedLinesCount = countCompletedLines();
+            
+            // Light up the correct amount of letters based on completed lines (capped at 5)
+            const letters = document.querySelectorAll('.letter');
+            letters.forEach((letterSpan, index) => {
+                if (index < completedLinesCount) {
+                    letterSpan.classList.add('active');
+                } else {
+                    letterSpan.classList.remove('active');
+                }
+            });
+
+            // If 5 or more lines are completed, it's a perfect bingo win
+            if (completedLinesCount >= 5) {
+                document.getElementById('message').textContent = 'Perfect Bingo! 🎉 Game Completed!';
+                gameOver = true;
+            }
+        }
+
+        function countCompletedLines() {
+            let lines = 0;
+
+            // 1. Check Rows
+            for (let r = 0; r < gridSize; r++) {
+                if (boardState[r].every(cell => cell)) lines++;
+            }
+
+            // 2. Check Columns
+            for (let c = 0; c < gridSize; c++) {
+                let colWin = true;
+                for (let r = 0; r < gridSize; r++) {
+                    if (!boardState[r][c]) {
+                        colWin = false;
+                        break;
+                    }
+                }
+                if (colWin) lines++;
+            }
+
+            // 3. Check Main Diagonal
+            let mainDiagWin = true;
+            for (let i = 0; i < gridSize; i++) {
+                if (!boardState[i][i]) {
+                    mainDiagWin = false;
+                    break;
+                }
+            }
+            if (mainDiagWin) lines++;
+
+            // 4. Check Anti-Diagonal
+            let antiDiagWin = true;
+            for (let i = 0; i < gridSize; i++) {
+                if (!boardState[i][gridSize - 1 - i]) {
+                    antiDiagWin = false;
+                    break;
+                }
+            }
+            if (antiDiagWin) lines++;
+
+            return lines;
+        }
+
+        // Default to 5x5 on first load
+        initGame(5);
+    </script>
+
+</body>
+</html>

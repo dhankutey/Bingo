@@ -1,9 +1,9 @@
-const CACHE_NAME = 'bingo-cache-v1';
+const CACHE_NAME = 'bingo-cache-v2';
 const ASSETS = [
   './',
   './index.html',
-  './index.css',
-  './index.js',
+  './style.css',
+  './script.js',
   './manifest.json',
   'https://cdn-icons-png.flaticon.com/512/5726/5726678.png'
 ];

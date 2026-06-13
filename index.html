@@ -1,84 +1,42 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Dynamic Bingo Game</title>
-  <link rel="manifest" href="./manifest.json">
-  <link rel="stylesheet" href="./style.css">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dynamic Bingo Game</title>
+    <link rel="stylesheet" href="index.css">
+    <link rel="manifest" href="./manifest.json">
 </head>
 <body>
 
-  <div class="game-container">
-    <div class="bingo-tracker">
-      <span class="letter">B</span>
-      <span class="letter">I</span>
-      <span class="letter">N</span>
-      <span class="letter">G</span>
-      <span class="letter">O</span>
-    </div>
-
+    <h1>Bingo Game</h1>
+    
     <div class="controls">
-      <button class="size-btn" data-size="5">5 x 5</button>
-      <button class="size-btn" data-size="7">7 x 7</button>
-      <button class="size-btn" data-size="10">10 x 10</button>
+        <button onclick="initGame(5)">New 5x5 Game (1-25)</button>
+        <button onclick="initGame(7)">New 7x7 Game (1-49)</button>
+        <button onclick="initGame(10)">New 10x10 Game (1-100)</button>
     </div>
 
+    <div class="bingo-tracker" id="tracker">
+        <span class="letter">B</span>
+        <span class="letter">I</span>
+        <span class="letter">N</span>
+        <span class="letter">G</span>
+        <span class="letter">O</span>
+    </div>
+
+    <div id="board" class="bingo-board"></div>
     <div id="message" class="message"></div>
 
-    <div id="board"></div>
-  </div>
-
-  <script src="./script.js"></script>
-
-  <script>
-    // Track the currently active grid size
-    let currentSize = null;
-
-    document.querySelectorAll('.size-btn').forEach(button => {
-      button.addEventListener('click', (e) => {
-        const selectedSize = parseInt(e.target.getAttribute('data-size'));
-        
-        // Custom message based on whether it's a new layout or a reset of the current one
-        const message = (selectedSize === currentSize) 
-          ? `Are you sure you want to reset the current ${selectedSize}x${selectedSize} board? This will clear your progress.`
-          : `Are you sure you want to change to a ${selectedSize}x${selectedSize} board? This will reset your current game.`;
-
-        // Show confirmation dialog
-        if (confirm(message)) {
-          currentSize = selectedSize;
-          setupNewBoard(selectedSize);
+    <script src="index.js"></script>
+    <script>
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('./sw.js')
+                    .then((reg) => console.log('Service Worker registered successfully!', reg))
+                    .catch((err) => console.log('Service Worker registration failed:', err));
+            });
         }
-      });
-    });
-
-    function setupNewBoard(size) {
-      // Clear the message container
-      document.getElementById('message').textContent = '';
-      
-      // Clear the board HTML to remove all previous cells and their marked states (circles)
-      const board = document.getElementById('board');
-      board.innerHTML = '';
-      
-      // Update CSS Grid layout dynamically based on the chosen size
-      board.style.gridTemplateColumns = `repeat(${size}, 1fr)`;
-
-      // Call the main generator function from your script.js if it exists
-      if (typeof initializeBingoBoard === 'function') {
-        initializeBingoBoard(size);
-      } else {
-        console.warn('initializeBingoBoard function not found in script.js. Please implement it there.');
-      }
-    }
-
-    // PWA Service Worker Registration
-    if ('serviceWorker' in navigator) {
-      window.addEventListener('load', () => {
-        navigator.serviceWorker.register('./sw.js')
-          .then((reg) => console.log('Service Worker registered successfully!', reg))
-          .catch((err) => console.log('Service Worker registration failed:', err));
-      });
-    }
-  </script>
+    </script>
 </body>
 </html>

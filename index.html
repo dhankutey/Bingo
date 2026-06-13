@@ -27,9 +27,8 @@
 
     <div id="board" class="bingo-board"></div>
     <div id="message" class="message"></div>
-
-    <script src="index.js"></script>
-       <script>
+ <script src="index.js"></script>
+    <script>
   if ('serviceWorker' in navigator) {
     window.addEventListener('load', () => {
       navigator.serviceWorker.register('./sw.js')
@@ -37,5 +36,6 @@
         .catch((err) => console.log('Service Worker registration failed:', err));
     });
   }
+</script>
 </body>
 </html>

@@ -1,16 +1,5 @@
 // ==========================================================
-// 1. PWA OFFLINE SERVICE WORKER REGISTRATION
-// ==========================================================
-if ('serviceWorker' in navigator) {
-    window.addEventListener('load', () => {
-        navigator.serviceWorker.register('./sw.js')
-            .then((reg) => console.log('Service Worker registered successfully!', reg))
-            .catch((err) => console.log('Service Worker registration failed:', err));
-    });
-}
-
-// ==========================================================
-// 2. MAIN BINGO GAME LOGIC
+// 1. MAIN BINGO GAME LOGIC
 // ==========================================================
 let gridSize = 5;
 let boardState = [];
@@ -137,7 +126,7 @@ function countCompletedLines() {
 }
 
 // ==========================================================
-// 3. UI BUTTON SELECTION EVENT LISTENERS WITH CONFIRMATION
+// 2. UI BUTTON SELECTION EVENT LISTENERS WITH CONFIRMATION
 // ==========================================================
 const sizeButtons = document.querySelectorAll('.size-btn');
 
@@ -145,17 +134,14 @@ sizeButtons.forEach(button => {
     button.addEventListener('click', () => {
         const chosenSize = parseInt(button.dataset.size);
         
-        // Only ask "Are you sure?" if the game is active and not already over
-        if (!gameOver) {
-            const userConfirmed = confirm(`Are you sure you want to change to a ${chosenSize}x${chosenSize} grid? Your current match progress will be wiped.`);
-            
-            if (userConfirmed) {
-                initGame(chosenSize);
-            }
-        } else {
-            // If previous game was won/finished, swap grids without a dialog warning
+        // Triggers native browser window with "OK" (Confirm) and "Cancel" choices every time
+        const userConfirmed = confirm(`Are you sure? Switching to a ${chosenSize}x${chosenSize} grid will reset your progress.`);
+        
+        // If the user clicks "OK" (true), clear the grid and build the new footprint
+        if (userConfirmed) {
             initGame(chosenSize);
         }
+        // If they click "Cancel" (false), do nothing and let them continue their match
     });
 });
 

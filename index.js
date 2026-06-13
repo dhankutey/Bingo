@@ -1,138 +1,115 @@
-const layouts = [
-  { size: 5, max: 25, label: '5x5, 1-25' },
-  { size: 7, max: 49, label: '7x7, 1-49' },
-  { size: 10, max: 100, label: '10x10, 1-100' }
-];
-
-let current = 0;
-let pendingIndex = null;
-let marked = new Set();
-let cellsGrid = [];
-let completedLines = 0;
+let gridSize = 5;
+let boardState = [];
 let gameOver = false;
 
-function shuffle(arr) {
-  for (let i = arr.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [arr[i], arr[j]] = [arr[j], arr[i]];
-  }
-  return arr;
+function initGame(size) {
+    gridSize = size;
+    gameOver = false;
+    document.getElementById('message').textContent = '';
+    
+    const letters = document.querySelectorAll('.letter');
+    letters.forEach(l => l.classList.remove('active'));
+
+    const board = document.getElementById('board');
+    board.innerHTML = '';
+    
+    // Set dynamic layout class based on size selection
+    let sizeClass = 'board-5x5';
+    if (gridSize === 7) sizeClass = 'board-7x7';
+    if (gridSize === 10) sizeClass = 'board-10x10';
+
+    board.className = 'bingo-board ' + sizeClass;
+    board.style.gridTemplateColumns = `repeat(${gridSize}, 1fr)`;
+
+    const totalNumbers = gridSize * gridSize;
+    const numbers = [];
+    for (let i = 1; i <= totalNumbers; i++) {
+        numbers.push(i);
+    }
+    
+    const shuffled = numbers.sort(() => 0.5 - Math.random());
+    boardState = Array(gridSize).fill(null).map(() => Array(gridSize).fill(false));
+
+    for (let i = 0; i < totalNumbers; i++) {
+        const row = Math.floor(i / gridSize);
+        const col = i % gridSize;
+
+        const cell = document.createElement('div');
+        cell.classList.add('cell');
+        cell.textContent = shuffled[i];
+        cell.dataset.row = row;
+        cell.dataset.col = col;
+
+        cell.addEventListener('click', () => handleCellClick(cell, row, col));
+        board.appendChild(cell);
+    }
 }
 
-function render() {
-  const layout = layouts[current];
-  const board = document.getElementById('board');
-  board.style.gridTemplateColumns = `repeat(${layout.size}, 1fr)`;
-  board.innerHTML = '';
-  marked = new Set();
-  cellsGrid = [];
-  completedLines = 0;
-  gameOver = false;
+function handleCellClick(cell, row, col) {
+    if (gameOver || boardState[row][col]) return;
 
-  document.querySelectorAll('#bingoDisplay span').forEach(s => s.classList.remove('lit'));
-  document.getElementById('winMessage').style.display = 'none';
+    cell.classList.add('marked');
+    boardState[row][col] = true;
 
-  const cellSize = layout.size <= 5 ? 50 : (layout.size === 7 ? 40 : 32);
-  const fontSize = layout.size <= 5 ? 18 : (layout.size === 7 ? 14 : 12);
-  board.style.width = (cellSize * layout.size + 4 * layout.size) + 'px';
-
-  const nums = shuffle(Array.from({ length: layout.max }, (_, i) => i + 1));
-  const size = layout.size;
-
-  for (let r = 0; r < size; r++) {
-    cellsGrid.push([]);
-    for (let c = 0; c < size; c++) {
-      const n = nums[r * size + c];
-      const cell = document.createElement('div');
-      cell.textContent = n;
-      cell.className = 'cell';
-      cell.style.height = cellSize + 'px';
-      cell.style.fontSize = fontSize + 'px';
-      cell.dataset.row = r;
-      cell.dataset.col = c;
-
-      cell.addEventListener('click', () => {
-        if (gameOver || cell.classList.contains('locked')) return;
-        marked.add(n);
-        cell.classList.add('marked');
-        checkLines(size);
-      });
-
-      cellsGrid[r].push(cell);
-      board.appendChild(cell);
-    }
-  }
-
-  document.querySelectorAll('.layoutBtn').forEach((btn, i) => {
-    btn.classList.toggle('active', i === current);
-  });
-}
-
-function checkLines(size) {
-  let newlyCompleted = [];
-
-  // rows
-  for (let r = 0; r < size; r++) {
-    const cells = cellsGrid[r];
-    if (cells.every(c => marked.has(parseInt(c.textContent))) && !cells[0].classList.contains('lineDone')) {
-      newlyCompleted.push(cells);
-    }
-  }
-  // columns
-  for (let c = 0; c < size; c++) {
-    const cells = cellsGrid.map(row => row[c]);
-    if (cells.every(cell => marked.has(parseInt(cell.textContent))) && !cells[0].classList.contains('lineDone')) {
-      newlyCompleted.push(cells);
-    }
-  }
-  // diagonals
-  const diag1 = cellsGrid.map((row, i) => row[i]);
-  if (diag1.every(cell => marked.has(parseInt(cell.textContent))) && !diag1[0].classList.contains('lineDone')) {
-    newlyCompleted.push(diag1);
-  }
-  const diag2 = cellsGrid.map((row, i) => row[size - 1 - i]);
-  if (diag2.every(cell => marked.has(parseInt(cell.textContent))) && !diag2[0].classList.contains('lineDone')) {
-    newlyCompleted.push(diag2);
-  }
-
-  newlyCompleted.forEach(line => {
-    completedLines++;
-    line.forEach(cell => {
-      cell.classList.add('lineDone', 'locked');
-      cell.classList.remove('marked');
-      cell.classList.add('glow');
+    const completedLinesCount = countCompletedLines();
+    
+    const letters = document.querySelectorAll('.letter');
+    letters.forEach((letterSpan, index) => {
+        if (index < completedLinesCount) {
+            letterSpan.classList.add('active');
+        } else {
+            letterSpan.classList.remove('active');
+        }
     });
 
-    const letters = document.querySelectorAll('#bingoDisplay span');
-    const idx = completedLines - 1;
-    if (idx < letters.length) {
-      letters[idx].classList.add('lit');
+    if (completedLinesCount >= 5) {
+        document.getElementById('message').textContent = 'Perfect Bingo! 🎉 Game Completed!';
+        gameOver = true;
     }
-
-    if (completedLines >= 5) {
-      gameOver = true;
-      document.getElementById('winMessage').style.display = 'block';
-    }
-  });
 }
 
-document.querySelectorAll('.layoutBtn').forEach(btn => {
-  btn.addEventListener('click', () => {
-    pendingIndex = parseInt(btn.dataset.index);
-    document.getElementById('confirmBox').style.display = 'block';
-  });
-});
+function countCompletedLines() {
+    let lines = 0;
 
-document.getElementById('confirmNo').addEventListener('click', () => {
-  pendingIndex = null;
-  document.getElementById('confirmBox').style.display = 'none';
-});
+    // Rows
+    for (let r = 0; r < gridSize; r++) {
+        if (boardState[r].every(cell => cell)) lines++;
+    }
 
-document.getElementById('confirmYes').addEventListener('click', () => {
-  current = pendingIndex;
-  pendingIndex = null;
-  document.getElementById('confirmBox').style.display = 'none';
-  render();
-});
+    // Columns
+    for (let c = 0; c < gridSize; c++) {
+        let colWin = true;
+        for (let r = 0; r < gridSize; r++) {
+            if (!boardState[r][c]) {
+                colWin = false;
+                break;
+            }
+        }
+        if (colWin) lines++;
+    }
 
-render();
+    // Main Diagonal
+    let mainDiagWin = true;
+    for (let i = 0; i < gridSize; i++) {
+        if (!boardState[i][i]) {
+            mainDiagWin = false;
+            break;
+        }
+    }
+    if (mainDiagWin) lines++;
+
+    // Anti Diagonal
+    let antiDiagWin = true;
+    for (let i = 0; i < gridSize; i++) {
+        if (!boardState[i][gridSize - 1 - i]) {
+            antiDiagWin = false;
+            break;
+        }
+    }
+    if (antiDiagWin) lines++;
+
+    return lines;
+}
+
+// Start with a standard 5x5 board by default
+initGame(5);

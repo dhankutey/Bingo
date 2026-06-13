@@ -90,6 +90,12 @@
             font-size: 18px;
         }
 
+        .board-7x7 .cell {
+            width: 52px;
+            height: 52px;
+            font-size: 16px;
+        }
+
         .board-10x10 .cell {
             width: 45px;
             height: 45px;
@@ -107,6 +113,16 @@
             width: 44px;
             height: 44px;
             border: 4px solid #dc3545;
+            border-radius: 50%;
+            pointer-events: none;
+        }
+
+        .board-7x7 .cell.marked::after {
+            content: '';
+            position: absolute;
+            width: 38px;
+            height: 38px;
+            border: 3.5px solid #dc3545;
             border-radius: 50%;
             pointer-events: none;
         }
@@ -136,6 +152,7 @@
     
     <div class="controls">
         <button onclick="initGame(5)">New 5x5 Game (1-25)</button>
+        <button onclick="initGame(7)">New 7x7 Game (1-49)</button>
         <button onclick="initGame(10)">New 10x10 Game (1-100)</button>
     </div>
 
@@ -168,7 +185,8 @@
             const board = document.getElementById('board');
             board.innerHTML = '';
             
-            board.className = 'bingo-board ' + (gridSize === 5 ? 'board-5x5' : 'board-10x10');
+            // Assign proper board class name dynamically
+            board.className = 'bingo-board board-' + gridSize + 'x' + gridSize;
             board.style.gridTemplateColumns = `repeat(${gridSize}, 1fr)`;
 
             const totalNumbers = gridSize * gridSize;
@@ -267,6 +285,5 @@
         // Default to 5x5 on first load
         initGame(5);
     </script>
-
 </body>
 </html>

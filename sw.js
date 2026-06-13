@@ -1,30 +1,30 @@
-const CACHE_NAME = 'bingo-cache-v2';
-const ASSETS = [
+const CACHE_NAME = 'bingo-cache-v1';
+const ASSETS_TO_CACHE = [
   './',
   './index.html',
-  './style.css',
-  './script.js',
+  './index.css',
+  './index.js',
   './manifest.json',
-  'https://cdn-icons-png.flaticon.com/512/5726/5726678.png'
+  './icon.png'
 ];
 
-// Install Service Worker and cache all assets
+// Install the service worker and cache assets
 self.addEventListener('install', (event) => {
   event.waitUntil(
     caches.open(CACHE_NAME).then((cache) => {
-      return cache.addAll(ASSETS);
+      return cache.addAll(ASSETS_TO_CACHE);
     })
   );
 });
 
-// Activate Service Worker and clean up old caches
+// Activate worker and clean up old caches
 self.addEventListener('activate', (event) => {
   event.waitUntil(
-    caches.keys().then((keys) => {
+    caches.keys().then((cacheNames) => {
       return Promise.all(
-        keys.map((key) => {
-          if (key !== CACHE_NAME) {
-            return caches.delete(key);
+        cacheNames.map((cache) => {
+          if (cache !== CACHE_NAME) {
+            return caches.delete(cache);
           }
         })
       );
@@ -35,8 +35,8 @@ self.addEventListener('activate', (event) => {
 // Fetch assets from cache if offline
 self.addEventListener('fetch', (event) => {
   event.respondWith(
-    caches.match(event.request).then((cachedResponse) => {
-      return cachedResponse || fetch(event.request);
+    caches.match(event.request).then((response) => {
+      return response || fetch(event.request);
     })
   );
 });

@@ -1,162 +1,138 @@
-// ==========================================================
-// 1. MAIN BINGO GAME LOGIC
-// ==========================================================
-let gridSize = 5;
-let boardState = [];
+const layouts = [
+  { size: 5, max: 25, label: '5x5, 1-25' },
+  { size: 7, max: 49, label: '7x7, 1-49' },
+  { size: 10, max: 100, label: '10x10, 1-100' }
+];
+
+let current = 0;
+let pendingIndex = null;
+let marked = new Set();
+let cellsGrid = [];
+let completedLines = 0;
 let gameOver = false;
 
-function initGame(size) {
-    gridSize = size;
-    gameOver = false;
-    document.getElementById('message').textContent = '';
-    
-    // Reset the UI tracking letters back to default inactive states
-    const letters = document.querySelectorAll('.letter');
-    letters.forEach(l => l.classList.remove('active'));
-
-    const board = document.getElementById('board');
-    board.innerHTML = '';
-    
-    // Assigns dynamic classes like 'board-5x5', 'board-7x7', 'board-10x10'
-    board.className = `bingo-board board-${gridSize}x${gridSize}`;
-    board.style.gridTemplateColumns = `repeat(${gridSize}, 1fr)`;
-
-    // Generate consecutive sequential numbers
-    const totalNumbers = gridSize * gridSize;
-    const numbers = [];
-    for (let i = 1; i <= totalNumbers; i++) {
-        numbers.push(i);
-    }
-    
-    // Fisher-Yates Algorithm for perfect, non-biased shuffling
-    for (let i = numbers.length - 1; i > 0; i--) {
-        const j = Math.floor(Math.random() * (i + 1));
-        [numbers[i], numbers[j]] = [numbers[j], numbers[i]];
-    }
-    
-    // Generate a fresh tracking grid matrix initialized to false
-    boardState = Array(gridSize).fill(null).map(() => Array(gridSize).fill(false));
-
-    // Construct the grid elements visually
-    for (let i = 0; i < totalNumbers; i++) {
-        const row = Math.floor(i / gridSize);
-        const col = i % gridSize;
-
-        const cell = document.createElement('div');
-        cell.classList.add('cell');
-        cell.textContent = numbers[i];
-        cell.dataset.row = row;
-        cell.dataset.col = col;
-
-        cell.addEventListener('click', () => handleCellClick(cell, row, col));
-        board.appendChild(cell);
-    }
+function shuffle(arr) {
+  for (let i = arr.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [arr[i], arr[j]] = [arr[j], arr[i]];
+  }
+  return arr;
 }
 
-function handleCellClick(cell, row, col) {
-    if (gameOver || boardState[row][col]) return;
+function render() {
+  const layout = layouts[current];
+  const board = document.getElementById('board');
+  board.style.gridTemplateColumns = `repeat(${layout.size}, 1fr)`;
+  board.innerHTML = '';
+  marked = new Set();
+  cellsGrid = [];
+  completedLines = 0;
+  gameOver = false;
 
-    cell.classList.add('marked');
-    boardState[row][col] = true;
+  document.querySelectorAll('#bingoDisplay span').forEach(s => s.classList.remove('lit'));
+  document.getElementById('winMessage').style.display = 'none';
 
-    const completedLinesCount = countCompletedLines();
-    
-    // Update the visual status of top indicator letters dynamically
-    const letters = document.querySelectorAll('.letter');
-    letters.forEach((letterSpan, index) => {
-        if (index < completedLinesCount) {
-            letterSpan.classList.add('active');
-        } else {
-            letterSpan.classList.remove('active');
-        }
+  const cellSize = layout.size <= 5 ? 50 : (layout.size === 7 ? 40 : 32);
+  const fontSize = layout.size <= 5 ? 18 : (layout.size === 7 ? 14 : 12);
+  board.style.width = (cellSize * layout.size + 4 * layout.size) + 'px';
+
+  const nums = shuffle(Array.from({ length: layout.max }, (_, i) => i + 1));
+  const size = layout.size;
+
+  for (let r = 0; r < size; r++) {
+    cellsGrid.push([]);
+    for (let c = 0; c < size; c++) {
+      const n = nums[r * size + c];
+      const cell = document.createElement('div');
+      cell.textContent = n;
+      cell.className = 'cell';
+      cell.style.height = cellSize + 'px';
+      cell.style.fontSize = fontSize + 'px';
+      cell.dataset.row = r;
+      cell.dataset.col = c;
+
+      cell.addEventListener('click', () => {
+        if (gameOver || cell.classList.contains('locked')) return;
+        marked.add(n);
+        cell.classList.add('marked');
+        checkLines(size);
+      });
+
+      cellsGrid[r].push(cell);
+      board.appendChild(cell);
+    }
+  }
+
+  document.querySelectorAll('.layoutBtn').forEach((btn, i) => {
+    btn.classList.toggle('active', i === current);
+  });
+}
+
+function checkLines(size) {
+  let newlyCompleted = [];
+
+  // rows
+  for (let r = 0; r < size; r++) {
+    const cells = cellsGrid[r];
+    if (cells.every(c => marked.has(parseInt(c.textContent))) && !cells[0].classList.contains('lineDone')) {
+      newlyCompleted.push(cells);
+    }
+  }
+  // columns
+  for (let c = 0; c < size; c++) {
+    const cells = cellsGrid.map(row => row[c]);
+    if (cells.every(cell => marked.has(parseInt(cell.textContent))) && !cells[0].classList.contains('lineDone')) {
+      newlyCompleted.push(cells);
+    }
+  }
+  // diagonals
+  const diag1 = cellsGrid.map((row, i) => row[i]);
+  if (diag1.every(cell => marked.has(parseInt(cell.textContent))) && !diag1[0].classList.contains('lineDone')) {
+    newlyCompleted.push(diag1);
+  }
+  const diag2 = cellsGrid.map((row, i) => row[size - 1 - i]);
+  if (diag2.every(cell => marked.has(parseInt(cell.textContent))) && !diag2[0].classList.contains('lineDone')) {
+    newlyCompleted.push(diag2);
+  }
+
+  newlyCompleted.forEach(line => {
+    completedLines++;
+    line.forEach(cell => {
+      cell.classList.add('lineDone', 'locked');
+      cell.classList.remove('marked');
+      cell.classList.add('glow');
     });
 
-    // Determine lines required to win based on the active grid footprint
-    let linesNeededToWin = 5; 
-    if (gridSize === 7) linesNeededToWin = 7;
-    if (gridSize === 10) linesNeededToWin = 10;
-
-    if (completedLinesCount >= linesNeededToWin) {
-        document.getElementById('message').textContent = 'Perfect Bingo! 🎉 Game Completed!';
-        gameOver = true;
+    const letters = document.querySelectorAll('#bingoDisplay span');
+    const idx = completedLines - 1;
+    if (idx < letters.length) {
+      letters[idx].classList.add('lit');
     }
+
+    if (completedLines >= 5) {
+      gameOver = true;
+      document.getElementById('winMessage').style.display = 'block';
+    }
+  });
 }
 
-function countCompletedLines() {
-    let lines = 0;
-
-    // Row verification check
-    for (let r = 0; r < gridSize; r++) {
-        if (boardState[r].every(cell => cell)) lines++;
-    }
-
-    // Column verification check
-    for (let c = 0; c < gridSize; c++) {
-        let colWin = true;
-        for (let r = 0; r < gridSize; r++) {
-            if (!boardState[r][c]) {
-                colWin = false;
-                break;
-            }
-        }
-        if (colWin) lines++;
-    }
-
-    // Top-left to bottom-right diagonal check
-    let mainDiagWin = true;
-    for (let i = 0; i < gridSize; i++) {
-        if (!boardState[i][i]) {
-            mainDiagWin = false;
-            break;
-        }
-    }
-    if (mainDiagWin) lines++;
-
-    // Top-right to bottom-left diagonal check
-    let antiDiagWin = true;
-    for (let i = 0; i < gridSize; i++) {
-        if (!boardState[i][gridSize - 1 - i]) {
-            antiDiagWin = false;
-            break;
-        }
-    }
-    if (antiDiagWin) lines++;
-
-    return lines;
-}
-
-// ==========================================================
-// 2. UI BUTTON SELECTION EVENT LISTENERS WITH CONFIRMATION
-// ==========================================================
-const sizeButtons = document.querySelectorAll('.size-btn');
-
-sizeButtons.forEach(button => {
-    button.addEventListener('click', () => {
-        const chosenSize = parseInt(button.dataset.size);
-        
-        // Check if any tiles have been clicked on the current board
-        const isProgressMade = boardState.some(row => row.some(cell => cell === true));
-
-        // Skip prompt only if the board is untouched or the game is already over
-        // (Clicking the same size now also prompts a reset/refresh if progress was made)
-        if (!isProgressMade || gameOver) {
-            initGame(chosenSize);
-            return;
-        }
-        
-        // Triggers native browser window with "OK" (Confirm) and "Cancel" choices
-        const message = (chosenSize === gridSize)
-            ? `Are you sure? This will reset and refresh your current ${chosenSize}x${chosenSize} board.`
-            : `Are you sure? Switching to a ${chosenSize}x${chosenSize} grid will reset your progress.`;
-        const userConfirmed = confirm(message);
-        
-        // If the user clicks "OK" (true), clear the grid and build the new footprint
-        if (userConfirmed) {
-            initGame(chosenSize);
-        }
-        // If they click "Cancel" (false), execution drops out silently and retains the current match
-    });
+document.querySelectorAll('.layoutBtn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    pendingIndex = parseInt(btn.dataset.index);
+    document.getElementById('confirmBox').style.display = 'block';
+  });
 });
 
-// Launch a default 5x5 game layout automatically on initial load
-initGame(5);
+document.getElementById('confirmNo').addEventListener('click', () => {
+  pendingIndex = null;
+  document.getElementById('confirmBox').style.display = 'none';
+});
+
+document.getElementById('confirmYes').addEventListener('click', () => {
+  current = pendingIndex;
+  pendingIndex = null;
+  document.getElementById('confirmBox').style.display = 'none';
+  render();
+});
+
+render();

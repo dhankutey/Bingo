@@ -134,14 +134,23 @@ sizeButtons.forEach(button => {
     button.addEventListener('click', () => {
         const chosenSize = parseInt(button.dataset.size);
         
-        // Triggers native browser window with "OK" (Confirm) and "Cancel" choices every time
+        // Check if any tiles have been clicked on the current board
+        const isProgressMade = boardState.some(row => row.some(cell => cell === true));
+
+        // Skip prompt if they click the same size they're already playing, or if the board is untouched
+        if (chosenSize === gridSize || !isProgressMade || gameOver) {
+            initGame(chosenSize);
+            return;
+        }
+        
+        // Triggers native browser window with "OK" (Confirm) and "Cancel" choices
         const userConfirmed = confirm(`Are you sure? Switching to a ${chosenSize}x${chosenSize} grid will reset your progress.`);
         
         // If the user clicks "OK" (true), clear the grid and build the new footprint
         if (userConfirmed) {
             initGame(chosenSize);
         }
-        // If they click "Cancel" (false), do nothing and let them continue their match
+        // If they click "Cancel" (false), execution drops out silently and retains the current match
     });
 });
 

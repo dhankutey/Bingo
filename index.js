@@ -1,41 +1,61 @@
+// ==========================================================
+// 1. PWA OFFLINE SERVICE WORKER REGISTRATION
+// ==========================================================
+if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+        navigator.serviceWorker.register('./sw.js')
+            .then((reg) => console.log('Service Worker registered successfully!', reg))
+            .catch((err) => console.log('Service Worker registration failed:', err));
+    });
+}
+
+// ==========================================================
+// 2. MAIN BINGO GAME LOGIC
+// ==========================================================
 let gridSize = 5;
 let boardState = [];
 let gameOver = false;
-const bingoLetters = ['B', 'I', 'N', 'G', 'O'];
 
 function initGame(size) {
     gridSize = size;
     gameOver = false;
     document.getElementById('message').textContent = '';
     
-    // Reset the visual B-I-N-G-O tracker
+    // Reset the UI tracking letters back to default inactive states
     const letters = document.querySelectorAll('.letter');
     letters.forEach(l => l.classList.remove('active'));
 
     const board = document.getElementById('board');
     board.innerHTML = '';
     
-    // Assign proper board class name dynamically
-    board.className = 'bingo-board board-' + gridSize + 'x' + gridSize;
+    // Assigns dynamic classes like 'board-5x5', 'board-7x7', 'board-10x10'
+    board.className = `bingo-board board-${gridSize}x${gridSize}`;
     board.style.gridTemplateColumns = `repeat(${gridSize}, 1fr)`;
 
+    // Generate consecutive sequential numbers
     const totalNumbers = gridSize * gridSize;
     const numbers = [];
     for (let i = 1; i <= totalNumbers; i++) {
         numbers.push(i);
     }
     
-    const shuffled = numbers.sort(() => 0.5 - Math.random());
+    // Fisher-Yates Algorithm for perfect, non-biased shuffling
+    for (let i = numbers.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [numbers[i], numbers[j]] = [numbers[j], numbers[i]];
+    }
+    
+    // Generate a fresh tracking grid matrix initialized to false
     boardState = Array(gridSize).fill(null).map(() => Array(gridSize).fill(false));
 
+    // Construct the grid elements visually
     for (let i = 0; i < totalNumbers; i++) {
         const row = Math.floor(i / gridSize);
         const col = i % gridSize;
 
         const cell = document.createElement('div');
-        // Added the grid-specific class here so the CSS circle effects work correctly
-        cell.classList.add('cell', `board-${gridSize}x${gridSize}`);
-        cell.textContent = shuffled[i];
+        cell.classList.add('cell');
+        cell.textContent = numbers[i];
         cell.dataset.row = row;
         cell.dataset.col = col;
 
@@ -50,10 +70,9 @@ function handleCellClick(cell, row, col) {
     cell.classList.add('marked');
     boardState[row][col] = true;
 
-    // Check how many lines are completed across the board
     const completedLinesCount = countCompletedLines();
     
-    // Light up the correct amount of letters based on completed lines (capped at 5)
+    // Update the visual status of top indicator letters dynamically
     const letters = document.querySelectorAll('.letter');
     letters.forEach((letterSpan, index) => {
         if (index < completedLinesCount) {
@@ -63,8 +82,12 @@ function handleCellClick(cell, row, col) {
         }
     });
 
-    // If 5 or more lines are completed, it's a perfect bingo win
-    if (completedLinesCount >= 5) {
+    // Determine lines required to win based on the active grid footprint
+    let linesNeededToWin = 5; 
+    if (gridSize === 7) linesNeededToWin = 7;
+    if (gridSize === 10) linesNeededToWin = 10;
+
+    if (completedLinesCount >= linesNeededToWin) {
         document.getElementById('message').textContent = 'Perfect Bingo! 🎉 Game Completed!';
         gameOver = true;
     }
@@ -73,12 +96,12 @@ function handleCellClick(cell, row, col) {
 function countCompletedLines() {
     let lines = 0;
 
-    // 1. Check Rows
+    // Row verification check
     for (let r = 0; r < gridSize; r++) {
         if (boardState[r].every(cell => cell)) lines++;
     }
 
-    // 2. Check Columns
+    // Column verification check
     for (let c = 0; c < gridSize; c++) {
         let colWin = true;
         for (let r = 0; r < gridSize; r++) {
@@ -90,7 +113,7 @@ function countCompletedLines() {
         if (colWin) lines++;
     }
 
-    // 3. Check Main Diagonal
+    // Top-left to bottom-right diagonal check
     let mainDiagWin = true;
     for (let i = 0; i < gridSize; i++) {
         if (!boardState[i][i]) {
@@ -100,7 +123,7 @@ function countCompletedLines() {
     }
     if (mainDiagWin) lines++;
 
-    // 4. Check Anti-Diagonal
+    // Top-right to bottom-left diagonal check
     let antiDiagWin = true;
     for (let i = 0; i < gridSize; i++) {
         if (!boardState[i][gridSize - 1 - i]) {
@@ -113,5 +136,28 @@ function countCompletedLines() {
     return lines;
 }
 
-// Default to 5x5 on first load
+// ==========================================================
+// 3. UI BUTTON SELECTION EVENT LISTENERS WITH CONFIRMATION
+// ==========================================================
+const sizeButtons = document.querySelectorAll('.size-btn');
+
+sizeButtons.forEach(button => {
+    button.addEventListener('click', () => {
+        const chosenSize = parseInt(button.dataset.size);
+        
+        // Only ask "Are you sure?" if the game is active and not already over
+        if (!gameOver) {
+            const userConfirmed = confirm(`Are you sure you want to change to a ${chosenSize}x${chosenSize} grid? Your current match progress will be wiped.`);
+            
+            if (userConfirmed) {
+                initGame(chosenSize);
+            }
+        } else {
+            // If previous game was won/finished, swap grids without a dialog warning
+            initGame(chosenSize);
+        }
+    });
+});
+
+// Launch a default 5x5 game layout automatically on initial load
 initGame(5);

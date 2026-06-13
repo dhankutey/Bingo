@@ -33,7 +33,8 @@ function initGame(size) {
         const col = i % gridSize;
 
         const cell = document.createElement('div');
-        cell.classList.add('cell');
+        // Added the grid-specific class here so the CSS circle effects work correctly
+        cell.classList.add('cell', `board-${gridSize}x${gridSize}`);
         cell.textContent = shuffled[i];
         cell.dataset.row = row;
         cell.dataset.col = col;

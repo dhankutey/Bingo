@@ -1,11 +1,11 @@
-const CACHE_NAME = 'bingo-cache-v1';
+const CACHE_NAME = 'bingo-cache-v2'; // Bumped version to force an update
 const ASSETS_TO_CACHE = [
-  './',
-  './index.html',
-  './index.css',
-  './index.js',
-  './manifest.json',
-  './icon.png'
+  '/bingo/',
+  '/bingo/index.html',
+  '/bingo/index.css',
+  '/bingo/index.js',
+  '/bingo/manifest.json',
+  '/bingo/icon.png'
 ];
 
 // Install the service worker and cache assets
@@ -13,7 +13,7 @@ self.addEventListener('install', (event) => {
   event.waitUntil(
     caches.open(CACHE_NAME).then((cache) => {
       return cache.addAll(ASSETS_TO_CACHE);
-    })
+    }).then(() => self.skipWaiting()) // Forces the waiting service worker to become active
   );
 });
 
@@ -28,7 +28,7 @@ self.addEventListener('activate', (event) => {
           }
         })
       );
-    })
+    }).then(() => self.clients.claim()) // Forces the service worker to take control immediately
   );
 });
 
@@ -36,6 +36,7 @@ self.addEventListener('activate', (event) => {
 self.addEventListener('fetch', (event) => {
   event.respondWith(
     caches.match(event.request).then((response) => {
+      // Return cache match, otherwise fetch from network
       return response || fetch(event.request);
     })
   );
